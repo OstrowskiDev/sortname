@@ -52,6 +52,16 @@ async function getFiles() {
   }
 }
 
+function checkFileTypes(files) {
+  const allowed = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.tiff', '.svg']
+
+  for (const file of files) {
+    if (!allowed.includes(file.ext.toLowerCase())) {
+      throw new Error('Currently sortname is configured to only work with graphic files')
+    }
+  }
+}
+
 function sortFiles(files) {
   return files.sort((a, b) => a.createdAt - b.createdAt)
 }
@@ -116,6 +126,8 @@ async function main() {
       throw new Error('Too many files in directory, sortname does not support more than 9999 files in single directory')
     }
 
+    checkFileTypes(files)
+
     const sorted = sortFiles(files)
 
     const tempRenamed = await temporaryRenameFiles(sorted)
@@ -124,7 +136,7 @@ async function main() {
     console.log('Files renamed successfully')
     process.exit(0)
   } catch (error) {
-    console.error('Error: ${error.message}')
+    console.error(`Error: ${error.message}`)
     process.exit(1) // terminates current Node process with error code (0 - success, 1 - error)
   }
 }
