@@ -5,6 +5,7 @@ const readline = require('readline')
 const path = require('path')
 
 const dirPath = process.cwd()
+let filesNum = 0
 
 // creates question for CLI and returns user answer
 async function askQuestion(query) {
@@ -70,10 +71,10 @@ async function renameFiles(files) {
 }
 
 function createName(number) {
-  if (number > 9999) {
+  if (filesNum > 9999) {
     return 'error'
   }
-  if (number > 999) {
+  if (filesNum > 999) {
     return String(number).padStart(4, '0')
   }
   return String(number).padStart(3, '0')
@@ -92,6 +93,8 @@ async function main() {
     console.log('No files in directory')
     return
   }
+
+  filesNum = files.length
 
   const sorted = sortFiles(files)
 
