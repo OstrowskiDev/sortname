@@ -60,9 +60,6 @@ async function renameFiles(files) {
   let count = 1
   for (const file of files) {
     const newBaseName = createName(count)
-    if (newBaseName === 'error') {
-      throw new Error('Too many files in directory, sortname does not support more than 9999 files in single directory')
-    }
     const oldName = path.join(dirPath, file.baseName + file.ext)
     const newName = path.join(dirPath, newBaseName + file.ext)
     await fs.rename(oldName, newName)
@@ -70,10 +67,28 @@ async function renameFiles(files) {
   }
 }
 
-function createName(number) {
-  if (filesNum > 9999) {
-    return 'error'
+async function temporaryRenameFiles(files) {
+  const tempFiles = []
+  let count = 1
+  for (const file of files) {
+    const tempFileName = `__temp__${String(count).padStart(4, '0')}${file.ext}`
+    const newPath = path.join(dirPath, tempFileName)
+
+    await fs.rename(file.fullPath, newPath)
+
+    tempFiles.push({
+      ...file,
+      fullPath: newPath,
+      baseName: path.basename(tempFileName, file.ext),
+    })
+
+    count++
   }
+
+  return tempFiles
+}
+
+function createName(number) {
   if (filesNum > 999) {
     return String(number).padStart(4, '0')
   }
@@ -81,28 +96,36 @@ function createName(number) {
 }
 
 async function main() {
-  const answer = await askQuestion(`Are you sure you want to change filenames in: '${dirPath}' ? (y/n): `)
-
-  if (answer !== 'y') {
-    console.log(`sortname aborted by user`)
-    process.exit(0)
-  }
-
-  const files = await getFiles()
-  if (files.length === 0) {
-    console.log('No files in directory')
-    return
-  }
-
-  filesNum = files.length
-
-  const sorted = sortFiles(files)
-
   try {
-    await renameFiles(sorted)
+    const answer = await askQuestion(`Are you sure you want to change filenames in: '${dirPath}' ? (y/n): `)
+
+    if (answer !== 'y') {
+      console.log(`sortname aborted by user`)
+      process.exit(0)
+    }
+
+    const files = await getFiles()
+    if (files.length === 0) {
+      console.log('No files in directory')
+      return
+    }
+
+    filesNum = files.length
+
+    if (filesNum > 9999) {
+      throw new Error('Too many files in directory, sortname does not support more than 9999 files in single directory')
+    }
+
+    const sorted = sortFiles(files)
+
+    const tempRenamed = await temporaryRenameFiles(sorted)
+
+    await renameFiles(tempRenamed)
     console.log('Files renamed successfully')
-  } catch (err) {
-    console.error(err.message)
+    process.exit(0)
+  } catch (error) {
+    console.error('Error: ${error.message}')
+    process.exit(1) // terminates current Node process with error code (0 - success, 1 - error)
   }
 }
 
